@@ -1,0 +1,340 @@
+<html>
+  <head>
+    <title>Appoll</title>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z"
+      crossorigin="anonymous"
+    />
+
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+
+  <body>
+    <div id="app" class="container"></div>
+    <template id="template-landing">
+      <div class="jumbotron">
+        <h1 class="display-4">Appoll.</h1>
+        <p class="lead">
+          Umfragen, Terminfindung, Entscheiden, Zeit sparen, ...
+        </p>
+        <hr class="my-4" />
+        <a class="btn btn-primary btn-lg" href="./createPoll" role="button"
+          >Jetzt starten</a
+        >
+      </div>
+    </template>
+    <template id="template-createpoll">
+      <h1 class="display-4">Appoll.</h1>
+      <h3>Neue Umfrage erstellen</h3>
+      <form>
+        <div class="form-row">
+          <div class="form-group col">
+            <label for="appoll-inp-title"
+              >Titel der Umfrage: Was möchten Sie organisieren, abfragen,
+              ...</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="appoll-inp-title"
+              placeholder="Titel, z.B. Termin für Workshop, Nächster Zockabend, ..."
+              autocomplete="no"
+              autofocus="true"
+            />
+          </div>
+        </div>
+        <div class="appoll-options"></div>
+        <div class="form-row">
+          <div class="form-group col">
+            <button
+              type="button"
+              class="btn btn-success mb-2 appoll-btn-add-option"
+            >
+              Option hinzufügen
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary mb-2 appoll-btn-start float-right"
+            >
+              Umfrage starten
+            </button>
+          </div>
+        </div>
+      </form>
+    </template>
+    <template id="template-createpoll-option">
+      <div class="form-row appoll-option">
+        <div class="form-group col">
+          <input
+            class="form-control"
+            type="text"
+            placeholder=""
+            autocomplete="no"
+          />
+        </div>
+      </div>
+    </template>
+    <template id="template-poll">
+      <h1 class="display-4">Appoll.</h1>
+      <h3 class="appoll-title"></h3>
+      <div class="appoll-poll-view">
+        <table class="table">
+          <thead>
+            <tr class="appoll-options">
+              <th scope="col">Teilnehmer</th>
+            </tr>
+          </thead>
+          <tbody class="appoll-votes"></tbody>
+        </table>
+      </div>
+    </template>
+    <template id="template-poll-vote">
+      <tr class="appoll-vote-row">
+        <td>
+          <input
+            class="form-control"
+            type="text"
+            placeholder="Dein Name"
+            autocomplete="no"
+            id="appoll-inp-name"
+          />
+        </td>
+      </tr>
+    </template>
+    <template id="template-poll-vote-cell">
+      <td>
+        <div class="custom-control custom-radio yes">
+          <input
+            type="radio"
+            id="{{id-yes}}"
+            name="{{group}}"
+            value="yes"
+            class="custom-control-input"
+          />
+          <label class="custom-control-label" for="{{id-yes}}">Ja</label>
+        </div>
+        <div class="custom-control custom-radio no">
+          <input
+            type="radio"
+            id="{{id-no}}"
+            name="{{group}}"
+            value="no"
+            class="custom-control-input"
+          />
+          <label class="custom-control-label" for="{{id-no}}">Nein</label>
+        </div>
+      </td>
+    </template>
+    <template id="template-vote-send">
+      <button class="btn btn-success float-right appoll-btn-sendVote">
+        Antworten senden
+      </button>
+    </template>
+  </body>
+  <script>
+    window.onpopstate = function (evt) {
+      route();
+    };
+    route();
+
+    function initShowPoll(pollId) {
+      fetch("/api/v1/poll/" + pollId)
+        .then((response) => response.json())
+        .then((data) => {
+          find(".appoll-title").textContent = data.title;
+
+          const options = find(".appoll-options");
+          data.options.forEach((option) => {
+            const optionEl = document.createElement("th");
+            optionEl.textContent = option.name;
+            options.appendChild(optionEl);
+          });
+          const rows = find(".appoll-votes");
+
+          data.votes &&
+            data.votes.forEach((vote) => {
+              const row = document.createElement("tr");
+              const nameEl = document.createElement("td");
+              nameEl.textContent = vote.name;
+              row.appendChild(nameEl);
+              data.options.forEach((option) => {
+                const voteEl = document.createElement("td");
+                voteEl.textContent = vote.votes[option.id];
+                row.appendChild(voteEl);
+              });
+              rows.appendChild(row);
+            });
+
+          const myPolls = JSON.parse(localStorage.getItem("polls"));
+          const alreadyVoted =
+            myPolls && myPolls.findIndex((poll) => poll.id === pollId) >= 0;
+
+          if (!alreadyVoted) {
+            renderTemplate("template-poll-vote", rows, false);
+            const voteRow = find(".appoll-vote-row");
+            data.options.forEach((option) => {
+              renderTemplate("template-poll-vote-cell", voteRow, false, [
+                {
+                  key: "id-yes",
+                  value: "yes-" + option.id,
+                },
+                {
+                  key: "id-no",
+                  value: "no-" + option.id,
+                },
+                {
+                  key: "group",
+                  value: "g" + option.id,
+                },
+              ]);
+            });
+            const storedName = localStorage.getItem("name");
+            if (storedName) {
+              find("#appoll-inp-name").value = storedName;
+            }
+
+            renderTemplate(
+              "template-vote-send",
+              find(".appoll-poll-view"),
+              false
+            );
+            find(".appoll-btn-sendVote").addEventListener("click", () => {
+              const votes = {};
+              data.options.forEach((opt) => {
+                votes[opt.id] = find(`input[name="g${opt.id}"]:checked`).value;
+              });
+
+              const name = find("#appoll-inp-name").value;
+              localStorage.setItem("name", name);
+              const vote = {
+                name: name,
+                votes: votes,
+              };
+
+              fetch("/api/v1/poll/" + pollId + "/vote", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(vote),
+              })
+                .then((response) => response.json())
+                .then((data) => {
+                  const pollInfo = {
+                    title: data.title,
+                    id: pollId,
+                  };
+                  if (myPolls) {
+                    myPolls.push(pollInfo);
+                    localStorage.setItem("polls", JSON.stringify(myPolls));
+                  } else {
+                    localStorage.setItem("polls", JSON.stringify([pollInfo]));
+                  }
+                  location.reload();
+                });
+            });
+          }
+        });
+    }
+
+    function initCreatePoll() {
+      function addOption() {
+        renderTemplate(
+          "template-createpoll-option",
+          find(".appoll-options"),
+          false
+        );
+        const optionCount = findAll(".appoll-option").length;
+        const newOption = find(".appoll-option:last-child input");
+
+        newOption.setAttribute("placeholder", "Option " + optionCount);
+        if (optionCount > 1) {
+          newOption.select();
+        }
+        newOption.addEventListener("keydown", (evt) => {
+          if (evt.key == "Enter") {
+            addOption();
+          }
+        });
+      }
+
+      document
+        .querySelector(".appoll-btn-add-option")
+        .addEventListener("click", () => addOption());
+      document
+        .querySelector(".appoll-btn-start")
+        .addEventListener("click", () => {
+          const poll = {
+            title: find("#appoll-inp-title").value,
+            options: findAll(".appoll-option input")
+              .filter((el) => el.value && el.value.trim())
+              .map((el) => el.value),
+          };
+
+          fetch("/api/v1/poll", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(poll),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              location.href = "/poll/" + data.id;
+            });
+        });
+      addOption();
+    }
+
+    function find(selector) {
+      return document.querySelector(selector);
+    }
+
+    function findAll(selector) {
+      return new Array(...document.querySelectorAll(selector));
+    }
+
+    function renderTemplate(
+      templateId,
+      container = document.getElementById("app"),
+      replace = true,
+      replacements = []
+    ) {
+      const template = document.getElementById(templateId);
+      const newNode = document.importNode(template.content, true);
+      if (replace) {
+        container.innerHTML = "";
+      }
+      replacements.forEach((rpl) => {
+        newNode.children[0].innerHTML = newNode.children[0].innerHTML.replace(
+          new RegExp("{{" + rpl.key + "}}", "g"),
+          rpl.value
+        );
+      });
+      container.appendChild(newNode);
+      return newNode;
+    }
+
+    function route() {
+      const path = document.location.pathname;
+      const createPollRoute = path.match(/\/createPoll/i);
+      if (createPollRoute) {
+        renderTemplate("template-createpoll");
+        initCreatePoll();
+        return;
+      }
+
+      const pollRoute = path.match(/\/poll\/([a-z0-9-]+)/i);
+      if (pollRoute) {
+        renderTemplate("template-poll");
+        const pollId = pollRoute[1];
+        initShowPoll(pollId);
+        return;
+      }
+
+      renderTemplate("template-landing");
+    }
+  </script>
+</html>
