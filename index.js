@@ -18,7 +18,7 @@ class App {
   start() {
     this.app = this.createApi();
     return new Promise((resolve) => {
-      this.app.listen(20202, "localhost", resolve);
+      this.app.listen(20202, "0.0.0.0", resolve);
     });
   }
 
@@ -82,7 +82,7 @@ class App {
 
     app.use("/api/v1", router);
 
-    app.use("/css", express.static("css"));
+    app.use(express.static("public"));
     app.use("/*", express.static("public"));
 
     return app;
