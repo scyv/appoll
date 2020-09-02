@@ -27,7 +27,7 @@ class App {
 
     const router = express.Router();
 
-    router.use(bodyParser.json());
+    router.use(bodyParser.json({ limit: "50mb" }));
 
     router.post("/poll", (req, res) => {
       const poll = req.body;
@@ -38,7 +38,8 @@ class App {
         title: poll.title,
         options: poll.options.map((option) => ({
           id: uuidv4(),
-          name: option,
+          name: option.name,
+          image: option.image,
         })),
       };
 

@@ -62,7 +62,9 @@
   <template id="template-createpoll-option">
     <div class="form-row appoll-option">
       <div class="form-group col">
-        <input class="form-control" type="text" placeholder="" autocomplete="no" />
+        <input class="form-control appoll-inp-option" type="text" placeholder="" autocomplete="no" />
+        <input type="file" class="appoll-inp-file" />
+        <div class="appoll-inp-file-preview"></div>
       </div>
     </div>
   </template>
@@ -123,6 +125,13 @@
         data.options.forEach((option) => {
           const optionEl = document.createElement("th");
           optionEl.textContent = option.name;
+          if (option.image) {
+            optionEl.appendChild(document.createElement("br"));
+            const img = document.createElement("img");
+            img.src = option.image;
+            img.classList.add("appoll-image-option")
+            optionEl.appendChild(img);
+          }
           options.appendChild(optionEl);
         });
         const rows = find(".appoll-votes");
@@ -218,16 +227,50 @@
           addOption();
         }
       });
+
+      const fileInput = find(".appoll-option:last-child .appoll-inp-file");
+      const preview = find(".appoll-option:last-child .appoll-inp-file-preview");
+      fileInput.addEventListener("change", handleFiles, false);
+      function handleFiles() {
+        preview.innerHTML = "";
+        for (let i = 0; i < this.files.length; i++) {
+          const file = this.files[i];
+          if (!file.type.startsWith('image/')) { continue }
+          const img = document.createElement("img");
+          img.classList.add("appoll-preview-img");
+          img.file = file;
+          preview.appendChild(img);
+          const reader = new FileReader();
+          reader.onload = (function (aImg) { return function (e) { aImg.src = e.target.result; }; })(img);
+          reader.readAsDataURL(file);
+        }
+      }
     }
 
-    document.querySelector(".appoll-btn-add-option").addEventListener("click", () => addOption());
-    document.querySelector(".appoll-btn-start").addEventListener("click", () => {
+    find(".appoll-btn-add-option").addEventListener("click", () => addOption());
+    find(".appoll-btn-start").addEventListener("click", () => {
       const poll = {
         title: find("#appoll-inp-title").value,
-        options: findAll(".appoll-option input")
-          .filter((el) => el.value && el.value.trim())
-          .map((el) => el.value),
+        options: findAll(".appoll-option")
+          .map(el => {
+            const option = {};
+            const text = el.querySelector(".appoll-inp-option");
+            if (text.value && text.value.trim()) {
+              option.name = text.value.trim();
+            }
+            const img = el.querySelector("img");
+            if (img) {
+              option.image = img.src;
+            }
+            if (option.name || option.image) {
+              return option;
+            }
+            return null;
+          })
+          .filter((el) => el)
       };
+
+      console.log(poll);
 
       fetch("/api/v1/poll", {
         method: "POST",

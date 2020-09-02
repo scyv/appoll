@@ -18,3 +18,11 @@ body {
   color: #333333;
   padding: 5px 15px 5px 2rem;
 }
+
+.appoll-preview-img {
+  width: 100px;
+}
+
+.appoll-image-option {
+  width: 200px;
+}
