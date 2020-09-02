@@ -18,7 +18,7 @@ class App {
   start() {
     this.app = this.createApi();
     return new Promise((resolve) => {
-      this.app.listen(20202, "0.0.0.0", resolve);
+      this.app.listen(20202, "localhost", resolve);
     });
   }
 
@@ -43,10 +43,6 @@ class App {
       };
 
       db.get("polls").push(savedPoll).write();
-      //   if (bla) {
-      //     res.status(404).json({ error: "Not a valid token" }).end();
-      //     return;
-      //   }
       res.send(db.get("polls").find({ id: id }).value());
     });
 
