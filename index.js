@@ -18,7 +18,8 @@ class App {
   start() {
     this.app = this.createApi();
     return new Promise((resolve) => {
-      this.app.listen(process.env.PORT, "localhost", resolve);
+      console.log("PORT", process.env.PORT);
+      this.app.listen(process.env.PORT, "0.0.0.0", resolve);
     });
   }
 
